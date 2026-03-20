@@ -19,27 +19,44 @@ export default function LecturerProfileScreen() {
     <Screen>
       <View style={styles.profileHeader}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{user?.name.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.avatarText}>
+            {user?.full_name?.charAt(0).toUpperCase() || "L"}
+          </Text>
         </View>
-        <Text style={styles.name}>{user?.name}</Text>
+        <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
         <View style={styles.roleBadge}>
-           <Text style={styles.roleText}>{user?.role}</Text>
+          <Text style={styles.roleText}>{user?.role}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Details</Text>
+        
+        {user?.department && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Department</Text>
+            <Text style={styles.infoValue}>{user.department}</Text>
+          </View>
+        )}
+
+        {user?.qualifications && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Qualifications</Text>
+            <Text style={styles.infoValue}>{user.qualifications}</Text>
+          </View>
+        )}
+
         <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Account Status</Text>
-            <Text style={styles.infoValue}>Active Staff</Text>
+          <Text style={styles.infoLabel}>Account Status</Text>
+          <Text style={styles.infoValue}>Active Staff</Text>
         </View>
       </View>
 
-      <Button 
-        title="Log Out" 
-        variant="danger" 
-        onPress={handleLogout} 
+      <Button
+        title="Log Out"
+        variant="danger"
+        onPress={handleLogout}
         style={styles.logoutBtn}
       />
     </Screen>

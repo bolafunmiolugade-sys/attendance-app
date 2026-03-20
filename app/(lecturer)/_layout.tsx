@@ -1,6 +1,6 @@
-import { Tabs } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { theme } from '@/src/constants/theme';
+import { theme } from "@/src/constants/theme";
+import { Feather } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 
 export default function LecturerLayout() {
   return (
@@ -13,51 +13,69 @@ export default function LecturerLayout() {
           backgroundColor: theme.colors.surface,
         },
         headerShadowVisible: false,
-      }}>
+      }}
+    >
       <Tabs.Screen
-        name="dashboard"
+        name="dashboard/index"
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ color }) => <Feather name="grid" size={24} color={color} />,
+          title: "Dashboard",
+          tabBarLabel: "Dashboard",
+          tabBarIcon: ({ color }) => (
+            <Feather name="grid" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="schedules"
+        name="schedules/index"
         options={{
-          title: 'Class Schedules',
-          tabBarLabel: 'Schedules',
-          tabBarIcon: ({ color }) => <Feather name="calendar" size={24} color={color} />,
+          title: "Class Schedules",
+          tabBarLabel: "Schedules",
+          tabBarIcon: ({ color }) => (
+            <Feather name="calendar" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="courses"
+        name="courses/index"
         options={{
-          title: 'My Courses',
-          tabBarLabel: 'Courses',
-          tabBarIcon: ({ color }) => <Feather name="users" size={24} color={color} />,
+          title: "My Courses",
+          tabBarLabel: "Courses",
+          tabBarIcon: ({ color }) => (
+            <Feather name="users" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="profile/index"
         options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <Feather name="user" size={24} color={color} />,
+          title: "Profile",
+          tabBarLabel: "Profile",
+          tabBarIcon: ({ color }) => (
+            <Feather name="user" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="schedules/create"
         options={{
           href: null, // Hide from tab bar
-          title: 'Create Schedule',
+          title: "Create Schedule",
         }}
       />
       <Tabs.Screen
         name="schedules/[id]"
         options={{
           href: null, // Hide from tab bar
-          title: 'Schedule Details',
+          title: "Schedule Details",
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="courses/[id]/members"
+        options={{
+          href: null, // Hide from tab bar
+          title: "Course Members",
+          headerShown: false,
         }}
       />
     </Tabs>

@@ -1,28 +1,39 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Screen } from '@/src/components/Screen';
-import { theme } from '@/src/constants/theme';
-import { useAuthStore } from '@/src/store/authStore';
-import { useAppStore } from '@/src/store/appStore';
-import { format, isToday } from 'date-fns';
+import { Screen } from "@/src/components/Screen";
+import { theme } from "@/src/constants/theme";
+import { useGetCourses } from "@/src/hooks/useCourseHooks";
+import { useGetSchedules } from "@/src/hooks/useScheduleHooks";
+import { useAuthStore } from "@/src/store/authStore";
+
+import { format, isToday } from "date-fns";
+import React from "react";
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
 
 export default function LecturerDashboard() {
   const { user } = useAuthStore();
-  const { courses, schedules, attendance } = useAppStore();
+  const router = useRouter();
+  const { data: coursesData } = useGetCourses();
+  const { data: schedulesData } = useGetSchedules();
 
-  const myCourses = courses.filter(c => c.lecturer_id === user?.id);
-  const myCourseIds = myCourses.map(c => c.id);
-  
-  const mySchedules = schedules.filter(s => myCourseIds.includes(s.course_id));
-  const todaysSchedules = mySchedules.filter(s => isToday(new Date(s.date)));
-  
-  const totalAttendanceCount = attendance.filter(a => mySchedules.some(s => s.id === a.schedule_id)).length;
+
+
+  const mySchedules = schedulesData?.schedules || [];
+  const todaysSchedules = mySchedules.filter((s: any) =>
+    isToday(new Date(s.class_start_time)),
+  );
+
+  const totalAttendanceCount = mySchedules.reduce(
+    (acc: number, s: any) => acc + (parseInt(s.present_count) || 0),
+    0,
+  );
 
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hello, {user?.name}</Text>
+          <Text style={styles.greeting}>
+            Hello, {user?.full_name.split(" ")[0]}
+          </Text>
           <Text style={styles.subtitle}>
             Here&apos;s what&apos;s happening today.
           </Text>
@@ -30,7 +41,9 @@ export default function LecturerDashboard() {
 
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{myCourses.length}</Text>
+            <Text style={styles.statValue}>
+              {coursesData ? (coursesData.courses || coursesData).length : 0}
+            </Text>
             <Text style={styles.statLabel}>Courses</Text>
           </View>
           <View style={styles.statBox}>
@@ -49,19 +62,24 @@ export default function LecturerDashboard() {
             You have no classes scheduled for today.
           </Text>
         ) : (
-          todaysSchedules.map((schedule) => {
-            const course = myCourses.find((c) => c.id === schedule.course_id);
+          todaysSchedules.map((schedule: any) => {
             return (
-              <View key={schedule.id} style={styles.card}>
-                <Text style={styles.courseCode}>{course?.code}</Text>
+              <TouchableOpacity 
+                key={schedule.id} 
+                style={styles.card}
+                onPress={() => router.push(`/(lecturer)/schedules/${schedule.id}`)}
+              >
+                <Text style={styles.courseCode}>{schedule.course_code}</Text>
+                <Text style={styles.courseName}>{schedule.course_name}</Text>
                 <Text style={styles.scheduleTime}>
-                  {format(new Date(schedule.start_time), "hh:mm a")} -{" "}
-                  {format(new Date(schedule.end_time), "hh:mm a")}
+                  {format(new Date(schedule.class_start_time), "hh:mm a")} -{" "}
+                  {format(new Date(schedule.class_end_time), "hh:mm a")}
                 </Text>
                 <Text style={styles.infoText}>
-                  Radius: {schedule.radius_meters}m
+                  Radius: {schedule.radius_m ? `${schedule.radius_m}m` : 'Not Set'} | {schedule.present_count || 0}/{schedule.registered_count || 0} Students
                 </Text>
-              </View>
+              </TouchableOpacity>
+
             );
           })
         )}
@@ -70,76 +88,84 @@ export default function LecturerDashboard() {
   );
 }
 
+
 const styles = StyleSheet.create({
   header: {
-     marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.xl,
   },
   greeting: {
-     ...theme.typography.h2,
-     color: theme.colors.text,
+    ...theme.typography.h2,
+    color: theme.colors.text,
   },
   subtitle: {
-     ...theme.typography.body,
-     color: theme.colors.textSecondary,
-     marginTop: theme.spacing.xs,
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
   },
   statsContainer: {
-     flexDirection: 'row',
-     backgroundColor: theme.colors.surface,
-     borderRadius: theme.borderRadius.md,
-     borderWidth: 1,
-     borderColor: theme.colors.border,
-     paddingVertical: theme.spacing.md,
-     marginBottom: theme.spacing.xl,
+    flexDirection: "row",
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
   },
   statBox: {
-     flex: 1,
-     alignItems: 'center',
-     borderRightWidth: 1,
-     borderRightColor: theme.colors.border,
+    flex: 1,
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.border,
   },
   statValue: {
-     ...theme.typography.h2,
-     color: theme.colors.primary,
+    ...theme.typography.h2,
+    color: theme.colors.primary,
   },
   statLabel: {
-     ...theme.typography.caption,
-     color: theme.colors.textSecondary,
-     marginTop: 4,
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
   },
   sectionTitle: {
-     ...theme.typography.h3,
-     color: theme.colors.text,
-     marginBottom: theme.spacing.md,
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   card: {
-     backgroundColor: theme.colors.surface,
-     padding: theme.spacing.md,
-     borderRadius: theme.borderRadius.md,
-     borderLeftWidth: 4,
-     borderLeftColor: theme.colors.primary,
-     marginBottom: theme.spacing.md,
-     borderWidth: 1,
-     borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.primary,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   courseCode: {
-     ...theme.typography.h3,
-     color: theme.colors.text,
-     marginBottom: 4,
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    fontWeight: "700",
+    marginBottom: 2,
   },
+  courseName: {
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+
   scheduleTime: {
-     ...theme.typography.body,
-     color: theme.colors.textSecondary,
-     marginBottom: 8,
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
   },
   infoText: {
-     ...theme.typography.caption,
-     color: theme.colors.textSecondary,
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
   },
   emptyText: {
-     ...theme.typography.body,
-     color: theme.colors.textSecondary,
-     textAlign: 'center',
-     marginTop: theme.spacing.lg,
-  }
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    marginTop: theme.spacing.lg,
+  },
 });

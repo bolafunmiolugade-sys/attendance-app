@@ -1,58 +1,65 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { format } from 'date-fns';
-import { Screen } from '@/src/components/Screen';
-import { theme } from '@/src/constants/theme';
-import { useAppStore } from '@/src/store/appStore';
-import { useAuthStore } from '@/src/store/authStore';
+import { format } from "date-fns";
+import React from "react";
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+
+import { Screen } from "@/src/components/Screen";
+import { theme } from "@/src/constants/theme";
+import { useGetStudentAttendanceHistory } from "@/src/hooks/useAttendanceHooks";
 
 export default function StudentHistoryScreen() {
-  const { user } = useAuthStore();
-  const { attendance, schedules, courses } = useAppStore();
+  const { data: historyData, isLoading, refetch } = useGetStudentAttendanceHistory();
 
-  // Get attendance logs for current student
-  const myAttendance = attendance.filter(a => a.student_id === user?.id);
-
-  // Map attendance to display proper course info and dates
-  const historyData = myAttendance.map(log => {
-      const schedule = schedules.find(s => s.id === log.schedule_id);
-      const course = courses.find(c => c.id === schedule?.course_id);
-      return {
-         ...log,
-         courseName: course?.name || 'Unknown Course',
-         courseCode: course?.code || '---',
-         date: schedule?.date || log.marked_at, 
-      };
-  }).sort((a, b) => new Date(b.marked_at).getTime() - new Date(a.marked_at).getTime());
+  const historyList = historyData?.history || [];
 
   const renderHistoryItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
+    <View style={[
+      styles.card, 
+      item.display_status === 'Absent' && styles.cardAbsent,
+      item.display_status === 'Upcoming' && styles.cardUpcoming
+    ]}>
       <View style={styles.cardHeader}>
-         <Text style={styles.courseCode}>{item.courseCode}</Text>
-         <Text style={styles.date}>{format(new Date(item.date), 'MMM dd, yyyy')}</Text>
+         <Text style={styles.courseCode}>{item.course_code}</Text>
+         <Text style={styles.date}>{format(new Date(item.class_start_time), 'MMM dd, yyyy')}</Text>
       </View>
-      <Text style={styles.courseName}>{item.courseName}</Text>
+      <Text style={styles.courseName}>{item.course_name}</Text>
       <View style={styles.statusRow}>
          <Text style={styles.statusLabel}>Status:</Text>
-         <Text style={styles.statusValue}>Present</Text>
+         <Text style={[
+           styles.statusValue, 
+           item.display_status === 'Absent' && styles.statusValueAbsent,
+           item.display_status === 'Upcoming' && styles.statusValueUpcoming
+         ]}>
+           {item.display_status}
+         </Text>
       </View>
-      <Text style={styles.markedAt}>
-         Marked Location: {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
-      </Text>
-      <Text style={styles.markedAt}>
-         Time: {format(new Date(item.marked_at), 'hh:mm a')}
-      </Text>
+      {item.display_status === 'Present' && item.marked_at && (
+        <Text style={styles.markedAt}>
+           Time: {format(new Date(item.marked_at), 'hh:mm a')}
+        </Text>
+      )}
     </View>
   );
 
+  if (isLoading) {
+    return (
+      <Screen>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
-      <Text style={styles.title}>History ({historyData.length})</Text>
+      <Text style={styles.title}>Attendance History ({historyList.length})</Text>
       <FlatList
-        data={historyData}
-        keyExtractor={item => item.id}
+        data={historyList}
+        keyExtractor={item => item.schedule_id?.toString() || Math.random().toString()}
         renderItem={renderHistoryItem}
         contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
+        onRefresh={refetch}
+        refreshing={isLoading}
         ListEmptyComponent={<Text style={styles.emptyText}>No attendance records found.</Text>}
       />
     </Screen>
@@ -60,6 +67,11 @@ export default function StudentHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
     ...theme.typography.h3,
     marginBottom: theme.spacing.md,
@@ -74,6 +86,12 @@ const styles = StyleSheet.create({
     borderLeftColor: theme.colors.success,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  cardAbsent: {
+    borderLeftColor: theme.colors.error,
+  },
+  cardUpcoming: {
+    borderLeftColor: theme.colors.primary,
   },
   cardHeader: {
      flexDirection: 'row',
@@ -109,6 +127,12 @@ const styles = StyleSheet.create({
      ...theme.typography.bodySmall,
      color: theme.colors.success,
      fontWeight: '700',
+  },
+  statusValueAbsent: {
+     color: theme.colors.error,
+  },
+  statusValueUpcoming: {
+     color: theme.colors.primary,
   },
   markedAt: {
      ...theme.typography.caption,

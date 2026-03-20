@@ -19,29 +19,46 @@ export default function ProfileScreen() {
     <Screen>
       <View style={styles.profileHeader}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{user?.name.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.avatarText}>
+            {user?.full_name?.charAt(0).toUpperCase() || "U"}
+          </Text>
         </View>
-        <Text style={styles.name}>{user?.name}</Text>
+        <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
         <View style={styles.roleBadge}>
-           <Text style={styles.roleText}>{user?.role}</Text>
+          <Text style={styles.roleText}>{user?.role}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Details</Text>
+        
         {user?.matric_number && (
-           <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Matric Number</Text>
-              <Text style={styles.infoValue}>{user.matric_number}</Text>
-           </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Matric Number</Text>
+            <Text style={styles.infoValue}>{user.matric_number}</Text>
+          </View>
+        )}
+
+        {user?.department && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Department</Text>
+            <Text style={styles.infoValue}>{user.department}</Text>
+          </View>
+        )}
+
+        {user?.level && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Level</Text>
+            <Text style={styles.infoValue}>{user.level} Level</Text>
+          </View>
         )}
       </View>
 
-      <Button 
-        title="Log Out" 
-        variant="danger" 
-        onPress={handleLogout} 
+      <Button
+        title="Log Out"
+        variant="danger"
+        onPress={handleLogout}
         style={styles.logoutBtn}
       />
     </Screen>

@@ -1,151 +1,162 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
-import { Screen } from '@/src/components/Screen';
-import { Button } from '@/src/components/Button';
-import { TextInput } from '@/src/components/TextInput';
-import { theme } from '@/src/constants/theme';
-import { useAuthStore } from '@/src/store/authStore';
-import { useAppStore } from '@/src/store/appStore';
+import { Screen } from "@/src/components/Screen";
+import { theme } from "@/src/constants/theme";
+import { useGetCourses } from "@/src/hooks/useCourseHooks";
+import { useAppStore } from "@/src/store/appStore";
+import { useAuthStore } from "@/src/store/authStore";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Alert, FlatList, StyleSheet, Text, View, TouchableOpacity } from "react-native";
 
 export default function LecturerCoursesScreen() {
+  const router = useRouter();
   const { user } = useAuthStore();
-  const { courses, registrations, createCourse } = useAppStore();
+  const { courses, createCourse } = useAppStore();
+  const {
+    data: allCoursesResponse,
+    isLoading: isLoadingAll,
+    isError: isErrorAll,
+    error: errorAll,
+  } = useGetCourses();
 
-  const [newCode, setNewCode] = useState('');
-  const [newName, setNewName] = useState('');
+  const [newCode, setNewCode] = useState("");
+  const [newName, setNewName] = useState("");
 
-  const myCourses = courses.filter(c => c.lecturer_id === user?.id);
+  const availableCourses = allCoursesResponse?.courses || [];
+  useEffect(() => {
+    console.log(allCoursesResponse, isLoadingAll);
+  }, [allCoursesResponse, isLoadingAll]);
 
+  
   const handleCreateCourse = () => {
-     if (!newCode || !newName || !user) {
-        Alert.alert("Error", "Please enter both course code and name.");
-        return;
-     }
+    if (!newCode || !newName || !user) {
+      Alert.alert("Error", "Please enter both course code and name.");
+      return;
+    }
 
-     createCourse({
-        code: newCode.toUpperCase(),
-        name: newName,
-        lecturer_id: user.id
-     });
+    createCourse({
+      code: newCode.toUpperCase(),
+      name: newName,
+      lecturer_id: String(user.id),
+    });
 
-     setNewCode('');
-     setNewName('');
-     Alert.alert("Success", "Course created successfully!");
+    setNewCode("");
+    setNewName("");
+    Alert.alert("Success", "Course created successfully!");
   };
 
   const renderCourseItem = ({ item }: { item: any }) => {
-     const studentCount = registrations.filter(r => r.course_id === item.id).length;
+    const studentCount = item.student_count || 0;
 
-     return (
-        <View style={styles.card}>
-           <View style={styles.cardContent}>
-              <Text style={styles.courseCode}>{item.code}</Text>
-              <Text style={styles.courseName}>{item.name}</Text>
-           </View>
-           <View style={styles.badge}>
-              <Text style={styles.badgeText}>{studentCount} Students</Text>
-           </View>
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+          router.push({
+            pathname: "/(lecturer)/courses/[id]/members",
+            params: { id: item.course_id },
+          })
+        }
+      >
+
+        <View style={styles.cardContent}>
+          <Text style={styles.courseCode}>{item.course_id}</Text>
+          <Text style={styles.courseName}>{item.course_name}</Text>
+          <Text style={styles.lecturerName}>Lecturer: {item.lecturer_name}</Text>
         </View>
-     );
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{studentCount} Students</Text>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   return (
     <Screen>
-      <View style={styles.createSection}>
-         <Text style={styles.sectionTitle}>Add New Course</Text>
-         <View style={styles.formRow}>
-            <TextInput 
-               label="Code"
-               placeholder="CS101"
-               value={newCode}
-               onChangeText={setNewCode}
-               style={{ flex: 1, marginRight: theme.spacing.sm, marginBottom: 0 }}
-               autoCapitalize="characters"
-            />
-            <TextInput 
-               label="Course Name"
-               placeholder="Intro to CS"
-               value={newName}
-               onChangeText={setNewName}
-               style={{ flex: 2, marginBottom: 0 }}
-            />
-         </View>
-         <Button 
-            title="Create Course" 
-            onPress={handleCreateCourse} 
-            style={{ marginTop: theme.spacing.md }}
-         />
-      </View>
-
-      <Text style={styles.sectionTitle}>My Courses ({myCourses.length})</Text>
+      <Text style={styles.sectionTitle}>
+        Assigned Courses ({availableCourses.length})
+      </Text>
       <FlatList
-         data={myCourses}
-         keyExtractor={item => item.id}
-         renderItem={renderCourseItem}
-         contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
-         ListEmptyComponent={<Text style={styles.emptyText}>You haven&apos;t created any courses yet.</Text>}
+        data={availableCourses}
+        keyExtractor={(item) =>
+          item.id || item.course_id || Math.random().toString()
+        }
+        renderItem={renderCourseItem}
+        contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            no courses assigned yet
+          </Text>
+        }
       />
+
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   createSection: {
-     backgroundColor: theme.colors.surface,
-     padding: theme.spacing.md,
-     borderRadius: theme.borderRadius.md,
-     marginBottom: theme.spacing.xl,
-     borderWidth: 1,
-     borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   sectionTitle: {
-     ...theme.typography.h3,
-     color: theme.colors.text,
-     marginBottom: theme.spacing.md,
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   formRow: {
-     flexDirection: 'row',
+    flexDirection: "row",
   },
   card: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     justifyContent: 'space-between',
-     backgroundColor: theme.colors.surface,
-     padding: theme.spacing.md,
-     borderRadius: theme.borderRadius.md,
-     marginBottom: theme.spacing.md,
-     borderWidth: 1,
-     borderColor: theme.colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   cardContent: {
-     flex: 1,
+    flex: 1,
   },
   courseCode: {
-     ...theme.typography.caption,
-     color: theme.colors.primary,
-     fontWeight: '700',
-     marginBottom: 4,
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    fontWeight: "700",
+    marginBottom: 4,
   },
   courseName: {
-     ...theme.typography.body,
-     color: theme.colors.text,
-     fontWeight: '600',
+    ...theme.typography.body,
+    color: theme.colors.text,
+    fontWeight: "600",
+    marginBottom: 4,
   },
+  lecturerName: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    fontStyle: "italic",
+  },
+
   badge: {
-     backgroundColor: theme.colors.background,
-     paddingHorizontal: theme.spacing.md,
-     paddingVertical: 6,
-     borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.full,
   },
   badgeText: {
-     ...theme.typography.caption,
-     color: theme.colors.textSecondary,
-     fontWeight: '600',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    fontWeight: "600",
   },
   emptyText: {
-     ...theme.typography.body,
-     color: theme.colors.textSecondary,
-     textAlign: 'center',
-     marginTop: theme.spacing.lg,
-  }
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    marginTop: theme.spacing.lg,
+  },
 });

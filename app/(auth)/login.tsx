@@ -1,33 +1,111 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { Link, useRouter } from 'expo-router';
-import { Screen } from '@/src/components/Screen';
-import { Button } from '@/src/components/Button';
-import { TextInput } from '@/src/components/TextInput';
-import { theme } from '@/src/constants/theme';
-import { useAuthStore } from '@/src/store/authStore';
-import { Role } from '@/src/types';
+import { Button } from "@/src/components/Button";
+import { Screen } from "@/src/components/Screen";
+import { TextInput } from "@/src/components/TextInput";
+import { theme } from "@/src/constants/theme";
+import { useLecturerLogin, useLogin } from "@/src/hooks/useAuthHooks";
+import { useAuthStore } from "@/src/store/authStore";
+import { Role } from "@/src/types";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { Link, useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import * as yup from "yup";
+
+// Validation schema for Student
+const studentLoginSchema = yup.object({
+  matric_number: yup.string().required("Matric Number is required"),
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(6, "Password must be at least 6 characters"),
+});
+
+// Validation schema for Lecturer
+const lecturerLoginSchema = yup.object({
+  email: yup
+    .string()
+    .required("Email is required")
+    .email("Enter a valid email"),
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(6, "Password must be at least 6 characters"),
+});
+
+type StudentLoginFormData = yup.InferType<typeof studentLoginSchema>;
+type LecturerLoginFormData = yup.InferType<typeof lecturerLoginSchema>;
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('STUDENT');
-  const login = useAuthStore((state) => state.login);
+  const [role, setRole] = useState<Role>("STUDENT");
+  const loginToStore = useAuthStore((state) => state.login);
   const router = useRouter();
 
-  const handleLogin = () => {
-    if (!email) return;
-    login(email, role);
-    if (role === 'STUDENT') {
-       router.replace('/(student)/map' as any);
-    } else {
-       router.replace('/(lecturer)/dashboard' as any);
-    }
+  // React Query Hooks
+  const { mutate: studentLogin, isPending: isStudentPending } = useLogin();
+  const { mutate: lecturerLogin, isPending: isLecturerPending } =
+    useLecturerLogin();
+
+  const isPending = role === "STUDENT" ? isStudentPending : isLecturerPending;
+
+  // React Hook Form for Student
+  const studentForm = useForm<StudentLoginFormData>({
+    resolver: yupResolver(studentLoginSchema),
+    defaultValues: { matric_number: "", password: "" },
+  });
+
+  // React Hook Form for Lecturer
+  const lecturerForm = useForm<LecturerLoginFormData>({
+    resolver: yupResolver(lecturerLoginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const onStudentSubmit = (data: StudentLoginFormData) => {
+    studentLogin(data, {
+      onSuccess: (res) => {
+        // Assume backend returns something like { token, user }
+        // Ensure role is set for persistence-based routing
+        const userWithRole = { ...res.user, role: "STUDENT" as const };
+        loginToStore(userWithRole, res.token);
+        router.replace("/(student)/map" as any);
+      },
+      onError: (err: any) => {
+        Alert.alert(
+          "Login Failed",
+          err?.response?.data?.message || err.message || "An error occurred",
+        );
+        console.log({ err });
+      },
+    });
+  };
+
+  const onLecturerSubmit = (data: LecturerLoginFormData) => {
+    lecturerLogin(data, {
+      onSuccess: (res) => {
+        const userWithRole = { ...res.user, role: "LECTURER" as const };
+        loginToStore(userWithRole, res.token);
+        router.replace("/(lecturer)/dashboard" as any);
+      },
+      onError: (err: any) => {
+        Alert.alert(
+          "Login Failed",
+          err?.response?.data?.message || err.message || "An error occurred",
+        );
+      },
+    });
   };
 
   return (
     <Screen>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
         <View style={styles.header}>
@@ -36,41 +114,103 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.roleContainer}>
-          <Button 
-            title="Student" 
-            variant={role === 'STUDENT' ? 'primary' : 'outline'}
-            onPress={() => setRole('STUDENT')}
+          <Button
+            title="Student"
+            variant={role === "STUDENT" ? "primary" : "outline"}
+            onPress={() => setRole("STUDENT")}
             style={styles.roleButton}
+            disabled={isPending}
           />
-          <Button 
-            title="Lecturer" 
-            variant={role === 'LECTURER' ? 'primary' : 'outline'}
-            onPress={() => setRole('LECTURER')}
+          <Button
+            title="Lecturer"
+            variant={role === "LECTURER" ? "primary" : "outline"}
+            onPress={() => setRole("LECTURER")}
             style={styles.roleButton}
+            disabled={isPending}
           />
         </View>
 
         <View style={styles.formContainer}>
-          <TextInput
-            label="Email Address"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          
-          <TextInput
-            label="Password"
-            placeholder="Enter your password"
-            secureTextEntry
-          />
-
-          <Button 
-            title="Sign In" 
-            onPress={handleLogin}
-            style={{ marginTop: theme.spacing.md }}
-          />
+          {role === "STUDENT" ? (
+            <View key="student-form">
+              <Controller
+                control={studentForm.control}
+                name="matric_number"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    label="Matric Number"
+                    placeholder="Enter your matric number"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    autoCapitalize="none"
+                    error={studentForm.formState.errors.matric_number?.message}
+                  />
+                )}
+              />
+              <Controller
+                control={studentForm.control}
+                name="password"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    label="Password"
+                    placeholder="Enter your password"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    secureTextEntry
+                    error={studentForm.formState.errors.password?.message}
+                  />
+                )}
+              />
+              <Button
+                title="Sign In"
+                onPress={studentForm.handleSubmit(onStudentSubmit)}
+                style={{ marginTop: theme.spacing.md }}
+                loading={isPending}
+              />
+            </View>
+          ) : (
+            <View key="lecturer-form">
+              <Controller
+                control={lecturerForm.control}
+                name="email"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    label="Email Address"
+                    placeholder="Enter your email"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    error={lecturerForm.formState.errors.email?.message}
+                  />
+                )}
+              />
+              <Controller
+                control={lecturerForm.control}
+                name="password"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    label="Password"
+                    placeholder="Enter your password"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    secureTextEntry
+                    error={lecturerForm.formState.errors.password?.message}
+                  />
+                )}
+              />
+              <Button
+                title="Sign In"
+                onPress={lecturerForm.handleSubmit(onLecturerSubmit)}
+                style={{ marginTop: theme.spacing.md }}
+                loading={isPending}
+              />
+            </View>
+          )}
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don&apos;t have an account? </Text>
@@ -87,12 +227,12 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: theme.spacing.lg,
   },
   header: {
     marginBottom: theme.spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
   },
   title: {
     ...theme.typography.h1,
@@ -104,8 +244,8 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   roleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: theme.spacing.md,
     marginBottom: theme.spacing.xl,
   },
@@ -113,11 +253,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formContainer: {
-    width: '100%',
+    width: "100%",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: theme.spacing.xl,
   },
   footerText: {
@@ -127,6 +267,6 @@ const styles = StyleSheet.create({
   link: {
     color: theme.colors.primary,
     ...theme.typography.body,
-    fontWeight: '600',
-  }
+    fontWeight: "600",
+  },
 });

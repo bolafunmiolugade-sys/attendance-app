@@ -1,0 +1,18 @@
+# Task: Add Admin View for Login and Course Creation
+
+- [ ] Planning and Design [/]
+    - [ ] Analyze existing backend implementation for Admin and Courses [x]
+    - [ ] Design the Admin Dashboard UI [ ]
+    - [ ] Create Implementation Plan [ ]
+- [ ] Backend Enhancements [ ]
+    - [ ] Update [app.js](file:///c:/Users/USER%201/Desktop/backend/app.js) to serve static files [ ]
+    - [ ] Ensure Admin credentials can be managed via [.env](file:///c:/Users/USER%201/Desktop/backend/.env) [ ]
+- [ ] Admin View Implementation [ ]
+    - [ ] Create Admin Login Page (`public/admin/index.html`) [ ]
+    - [ ] Create Admin Dashboard Page (`public/admin/dashboard.html`) [ ]
+    - [ ] Implement Course Creation form in Dashboard [ ]
+    - [ ] Add Premium Styling and Animations [ ]
+- [ ] Verification [ ]
+    - [ ] Test Admin Login Flow [ ]
+    - [ ] Test Course Creation via UI [ ]
+    - [ ] Final Walkthrough [ ]

@@ -8,7 +8,7 @@ interface TextInputProps extends RNTextInputProps {
   leftIcon?: React.ReactNode;
 }
 
-export const TextInput: React.FC<TextInputProps> = ({ 
+export const TextInput: React.FC<TextInputProps> = React.memo(({ 
   label, 
   error, 
   leftIcon,
@@ -34,7 +34,7 @@ export const TextInput: React.FC<TextInputProps> = ({
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
