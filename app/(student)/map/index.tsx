@@ -1,6 +1,7 @@
 import * as Location from "expo-location";
 import { getDistance } from "geolib";
 import React, { useEffect, useState } from "react";
+import { isValid } from "date-fns";
 import {
   ActivityIndicator,
   Alert,
@@ -37,59 +38,80 @@ export default function StudentMapScreen() {
   const {
     data: schedulesData,
     isLoading: isLoadingSchedules,
+    isError: isErrorSchedules,
     refetch: refetchSchedules,
   } = useGetSchedules();
 
   const now = new Date();
-  const schedules = schedulesData?.schedules?.filter((s: any) => {
-    const endTime = new Date(s.class_end_time || s.end_time);
-    return endTime > now;
-  });
+  const schedules = (schedulesData?.schedules || [])
+    .filter((s: any) => {
+      const endTimeStr = s.class_end_time || s.end_time;
+      if (!endTimeStr) return false;
+      const endTime = new Date(endTimeStr);
+      return isValid(endTime) && endTime > now;
+    });
 
   const [selectedSchedule, setSelectedSchedule] = useState<any | null>(null);
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setError("Permission to access location was denied");
-        return;
-      }
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          setError("Permission to access location was denied");
+          return;
+        }
 
-      Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 5 },
-        (loc) =>
-          setLocation(
-            loc.coords.latitude,
-            loc.coords.longitude,
-            loc.coords.accuracy || 0,
-          ),
-      );
+        Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.High, distanceInterval: 5 },
+          (loc) =>
+            setLocation(
+              loc.coords.latitude,
+              loc.coords.longitude,
+              loc.coords.accuracy || 0,
+            ),
+        );
+      } catch (e) {
+        console.error("Location permission error:", e);
+        setError("Failed to initialize location tracking");
+      }
     })();
-  }, []);
+  }, [setError, setLocation]);
 
   const handleMarkAttendance = async () => {
-    if (!selectedSchedule || !user || !currentLat || !currentLng) return;
+    if (!selectedSchedule || !user || !currentLat || !currentLng) {
+      Alert.alert("Error", "Missing required information (location/user/schedule).");
+      return;
+    }
+
+    const scheduleLat = selectedSchedule.location_lat || selectedSchedule.latitude;
+    const scheduleLng = selectedSchedule.location_long || selectedSchedule.longitude;
+    const radiusMeters = selectedSchedule.radius_meters || selectedSchedule.radius_m || 50;
+
+    if (!scheduleLat || !scheduleLng) {
+      Alert.alert("Error", "Schedule has no valid coordinates.");
+      return;
+    }
 
     // Check distance using Haversine formula
     const distance = getDistance(
       { latitude: currentLat, longitude: currentLng },
       {
-        latitude: selectedSchedule.location_lat || selectedSchedule.latitude,
-        longitude: selectedSchedule.location_long || selectedSchedule.longitude,
+        latitude: scheduleLat,
+        longitude: scheduleLng,
       },
     );
 
-    if (distance > selectedSchedule.radius_meters) {
+    if (distance > radiusMeters) {
       Alert.alert(
         "Too Far",
-        `You must be within ${selectedSchedule.radius_meters} meters of the class to mark attendance. You are ${distance} meters away.`,
+        `You must be within ${radiusMeters} meters of the class to mark attendance. You are ${distance} meters away.`,
       );
       return;
     }
 
     // Check if already marked
-    const alreadyMarked = attendanceLogs.some(
+    const alreadyMarked = (attendanceLogs || []).some(
       (log) =>
         log.schedule_id === selectedSchedule.id && log.student_id === user.id,
     );
@@ -104,13 +126,7 @@ export default function StudentMapScreen() {
 
     try {
       await markAttendanceMutation({
-        // student_id: user.id,
-        // schedule_id: selectedSchedule.id,
-        // marked_at: new Date().toISOString(),
-        // latitude: currentLat,
-        // longitude: currentLng,
-
-        course_code: selectedSchedule.course_code,
+        course_code: selectedSchedule.course_code || "N/A",
         device_uuid: user.id,
         latitude: currentLat,
         longitude: currentLng,
@@ -122,9 +138,9 @@ export default function StudentMapScreen() {
       // Also update local store for immediate UI feedback in history
       markAttendanceLocal({
         student_id: user.id as string,
-        full_name: user.full_name,
-        matric_number: user.matric_number,
-        department: user.department,
+        full_name: user.full_name || "Student",
+        matric_number: user.matric_number || "N/A",
+        department: user.department || "N/A",
         schedule_id: selectedSchedule.id,
         marked_at: new Date().toISOString(),
         latitude: currentLat,
@@ -136,13 +152,29 @@ export default function StudentMapScreen() {
       setSelectedSchedule(null);
       refetchSchedules();
     } catch (error: any) {
-      console.log(error?.response?.data?.message);
-      Alert.alert(
-        "Error",
-        error?.response?.data?.message || "Failed to mark attendance",
-      );
+      const apiMessage = error?.response?.data?.message || error.message || "Failed to mark attendance";
+      console.log("Mark Attendance Error:", apiMessage);
+      Alert.alert("Error", apiMessage);
     }
   };
+
+  if (isLoadingSchedules) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>Loading scheduled classes...</Text>
+      </View>
+    );
+  }
+
+  if (isErrorSchedules) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Failed to load schedules.</Text>
+        <Button title="Retry" onPress={() => refetchSchedules()} />
+      </View>
+    );
+  }
 
   if (!currentLat || !currentLng) {
     return (
@@ -271,6 +303,12 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: theme.spacing.sm,
     ...theme.typography.body,
+  },
+  errorText: {
+    ...theme.typography.body,
+    color: theme.colors.error || "#ef4444",
+    textAlign: "center",
+    marginBottom: theme.spacing.md,
   },
   bottomSheet: {
     position: "absolute",
