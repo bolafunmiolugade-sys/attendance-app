@@ -1,44 +1,68 @@
-import { format } from "date-fns";
+import { differenceInMinutes, format, isValid } from "date-fns";
 import React from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 
 import { Screen } from "@/src/components/Screen";
 import { theme } from "@/src/constants/theme";
 import { useGetStudentAttendanceHistory } from "@/src/hooks/useAttendanceHooks";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function StudentHistoryScreen() {
   const { data: historyData, isLoading, refetch } = useGetStudentAttendanceHistory();
 
   const historyList = historyData?.history || [];
 
-  const renderHistoryItem = ({ item }: { item: any }) => (
-    <View style={[
-      styles.card, 
-      item.display_status === 'Absent' && styles.cardAbsent,
-      item.display_status === 'Upcoming' && styles.cardUpcoming
-    ]}>
-      <View style={styles.cardHeader}>
-         <Text style={styles.courseCode}>{item.course_code}</Text>
-         <Text style={styles.date}>{format(new Date(item.class_start_time), 'MMM dd, yyyy')}</Text>
+  const renderHistoryItem = ({ item }: { item: any }) => {
+    const startTime = new Date(item.class_start_time || item.start_time);
+    const endTime = new Date(item.class_end_time || item.end_time);
+    
+    let durationText = "";
+    if (isValid(startTime) && isValid(endTime)) {
+      const durationMin = differenceInMinutes(endTime, startTime);
+      const hours = Math.floor(durationMin / 60);
+      const mins = durationMin % 60;
+      durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    }
+
+    return (
+      <View style={[
+        styles.card, 
+        item.display_status === 'Absent' && styles.cardAbsent,
+        item.display_status === 'Upcoming' && styles.cardUpcoming
+      ]}>
+        <View style={styles.cardHeader}>
+           <Text style={styles.courseCode}>{item.course_code}</Text>
+           <Text style={styles.date}>{format(startTime, 'MMM dd, yyyy')}</Text>
+        </View>
+        <Text style={styles.courseName}>{item.course_name}</Text>
+        
+        {durationText ? (
+          <View style={styles.timeRow}>
+            <Ionicons name="time-outline" size={14} color={theme.colors.textSecondary} />
+            <Text style={styles.timeText}>
+              {format(startTime, 'hh:mm a')} - {format(endTime, 'hh:mm a')} ({durationText})
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={styles.statusRow}>
+           <Text style={styles.statusLabel}>Status:</Text>
+           <Text style={[
+             styles.statusValue, 
+             item.display_status === 'Absent' && styles.statusValueAbsent,
+             item.display_status === 'Upcoming' && styles.statusValueUpcoming
+           ]}>
+             {item.display_status}
+           </Text>
+        </View>
+        {item.display_status === 'Present' && item.marked_at && (
+          <Text style={styles.markedAt}>
+             Marked at: {format(new Date(item.marked_at), 'hh:mm a')}
+          </Text>
+        )}
       </View>
-      <Text style={styles.courseName}>{item.course_name}</Text>
-      <View style={styles.statusRow}>
-         <Text style={styles.statusLabel}>Status:</Text>
-         <Text style={[
-           styles.statusValue, 
-           item.display_status === 'Absent' && styles.statusValueAbsent,
-           item.display_status === 'Upcoming' && styles.statusValueUpcoming
-         ]}>
-           {item.display_status}
-         </Text>
-      </View>
-      {item.display_status === 'Present' && item.marked_at && (
-        <Text style={styles.markedAt}>
-           Time: {format(new Date(item.marked_at), 'hh:mm a')}
-        </Text>
-      )}
-    </View>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
@@ -134,9 +158,26 @@ const styles = StyleSheet.create({
   statusValueUpcoming: {
      color: theme.colors.primary,
   },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.sm,
+    alignSelf: 'flex-start',
+  },
+  timeText: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
   markedAt: {
      ...theme.typography.caption,
      color: theme.colors.textSecondary,
+     marginTop: 4,
   },
   emptyText: {
     ...theme.typography.body,

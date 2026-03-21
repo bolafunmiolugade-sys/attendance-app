@@ -31,6 +31,7 @@ export interface Course {
   code?: string; // legacy fallback
   lecturer_id?: string;
   lecturer_name?: string;
+  department?: string;
 }
 
 export interface CourseRegistration {

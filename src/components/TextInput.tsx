@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, TextInput as RNTextInput, Text, StyleSheet, TextInputProps as RNTextInputProps } from 'react-native';
+import React, { useState } from 'react';
+import { View, TextInput as RNTextInput, Text, StyleSheet, TextInputProps as RNTextInputProps, TouchableOpacity } from 'react-native';
 import { theme } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 interface TextInputProps extends RNTextInputProps {
   label?: string;
@@ -12,9 +13,15 @@ export const TextInput: React.FC<TextInputProps> = React.memo(({
   label, 
   error, 
   leftIcon,
+  secureTextEntry,
   style, 
   ...props 
 }) => {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  // If secureTextEntry is provided, we use our local state to toggle it
+  const isSecure = secureTextEntry && !isPasswordVisible;
+
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -27,8 +34,22 @@ export const TextInput: React.FC<TextInputProps> = React.memo(({
         <RNTextInput
           style={[styles.input, style]}
           placeholderTextColor={theme.colors.textSecondary}
+          secureTextEntry={isSecure}
           {...props}
         />
+        {secureTextEntry && (
+          <TouchableOpacity 
+            style={styles.eyeIconContainer} 
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={isPasswordVisible ? "eye-off-outline" : "eye-outline"} 
+              size={20} 
+              color={theme.colors.textSecondary} 
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
@@ -60,6 +81,12 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     paddingLeft: theme.spacing.md,
+  },
+  eyeIconContainer: {
+    paddingRight: theme.spacing.md,
+    paddingLeft: theme.spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,

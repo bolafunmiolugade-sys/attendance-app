@@ -7,7 +7,6 @@ import {
 } from "@/src/hooks/useUserCourseHooks";
 import { useAuthStore } from "@/src/store/authStore";
 import { Course } from "@/src/types";
-import React from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -37,8 +36,30 @@ export default function StudentCoursesScreen() {
   const { mutate: register, isPending: isRegistering } = useRegisterCourses();
 
   // Extract arrays from backend response { success: true, courses: [...] }
-  const courses = allCoursesResponse?.courses || [];
+  const allCoursesRaw = allCoursesResponse?.courses || [];
   const myCourses = myCoursesResponse?.courses || [];
+
+  // Filter available courses by student department
+  const courses = allCoursesRaw.filter((course: Course) => {
+    console.log(user?.department, course);
+    // If student has a department, only show courses from that department
+    // Or if the course has no department, we might show it as a fallback,
+    // but the requirement says "only... belongs to the student department"
+    if (user?.department && course.department) {
+      console.log(
+        course.department.toLowerCase().trim() ===
+          user.department.toLowerCase().trim(),
+        "my course",
+      );
+      return (
+        course.department.toLowerCase().trim() ===
+        user.department.toLowerCase().trim()
+      );
+    }
+    // If course has no department, or user has no department, show it for now (safe fallback)
+    // but strictly, if department is specified, it must match.
+    return !course.department;
+  });
 
   const handleRegister = (courseId: string) => {
     if (!user) return;
@@ -87,6 +108,9 @@ export default function StudentCoursesScreen() {
           <Text style={styles.lecturerName}>
             Lecturer: {item.lecturer_name || "N/A"}
           </Text>
+          {item.department && (
+            <Text style={styles.departmentName}>Dept: {item.department}</Text>
+          )}
         </View>
         <Pressable
           disabled={isEnrolled || isRegistering}
@@ -196,6 +220,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: "500",
     // fontStyle: "italic",
+  },
+  departmentName: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    fontWeight: "600",
+    marginTop: 2,
   },
 
   emptyText: {

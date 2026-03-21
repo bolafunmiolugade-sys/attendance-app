@@ -33,18 +33,19 @@ export default function CreateScheduleScreen() {
   useEffect(() => {
     const courses = coursesData?.courses || [];
     if (courses.length > 0 && !selectedCourseId) {
-      setSelectedCourseId(
-        courses[0].id || courses[0].course_id || "",
-      );
+      setSelectedCourseId(courses[0].id || courses[0].course_id || "");
     }
   }, [coursesData?.courses, selectedCourseId]);
 
   const [radius, setRadius] = useState("20");
   const [attendanceWindow, setAttendanceWindow] = useState("15");
 
-
-  const [startTimeText, setStartTimeText] = useState(format(new Date(), "HH:mm"));
-  const [endTimeText, setEndTimeText] = useState(format(new Date(new Date().getTime() + 2 * 60 * 60 * 1000), "HH:mm"));
+  const [startTimeText, setStartTimeText] = useState(
+    format(new Date(), "HH:mm"),
+  );
+  const [endTimeText, setEndTimeText] = useState(
+    format(new Date(new Date().getTime() + 2 * 60 * 60 * 1000), "HH:mm"),
+  );
 
   const [isCourseModalVisible, setIsCourseModalVisible] = useState(false);
 
@@ -113,7 +114,8 @@ export default function CreateScheduleScreen() {
 
     const parseTime = (timeStr: string) => {
       const [h, m] = timeStr.split(":").map(Number);
-      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59)
+        return null;
       const d = new Date();
       d.setHours(h, m, 0, 0);
       return d;
@@ -143,7 +145,6 @@ export default function CreateScheduleScreen() {
         attendance_window_minutes: windowNum,
         radius_m: radiusNum,
       },
-
 
       {
         onSuccess: (res) => {
@@ -250,7 +251,7 @@ export default function CreateScheduleScreen() {
           >
             {/* Active Class Schedules */}
             {(coursesData?.courses || []).map((s: any) => (
-              <React.Fragment key={s.id}>
+              <React.Fragment key={s.course_id}>
                 <Marker
                   coordinate={{
                     latitude: s.center_lat,
@@ -272,7 +273,6 @@ export default function CreateScheduleScreen() {
                 />
               </React.Fragment>
             ))}
-
 
             {/* Current Pin */}
             {pinLocation && (
@@ -305,7 +305,7 @@ export default function CreateScheduleScreen() {
             </View>
             <FlatList
               data={coursesData?.courses || []}
-              keyExtractor={(item, index) => item.course_id + index}
+              keyExtractor={(item, index) => `${index}:${item.course_id}`}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.courseOption}

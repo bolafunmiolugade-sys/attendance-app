@@ -1,7 +1,7 @@
+import { isValid } from "date-fns";
 import * as Location from "expo-location";
 import { getDistance } from "geolib";
 import React, { useEffect, useState } from "react";
-import { isValid } from "date-fns";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import MapView, { Circle, Marker } from "react-native-maps";
 import { Button } from "@/src/components/Button";
 import { theme } from "@/src/constants/theme";
 import { useMarkAttendance } from "@/src/hooks/useAttendanceHooks";
+import { usePushNotifications } from "@/src/hooks/usePushNotifications";
 import { useGetSchedules } from "@/src/hooks/useScheduleHooks";
 import { useAppStore } from "@/src/store/appStore";
 import { useAuthStore } from "@/src/store/authStore";
@@ -41,15 +42,21 @@ export default function StudentMapScreen() {
     isError: isErrorSchedules,
     refetch: refetchSchedules,
   } = useGetSchedules();
+  const { scheduleAttendanceNotifications } = usePushNotifications();
 
   const now = new Date();
-  const schedules = (schedulesData?.schedules || [])
-    .filter((s: any) => {
-      const endTimeStr = s.class_end_time || s.end_time;
-      if (!endTimeStr) return false;
-      const endTime = new Date(endTimeStr);
-      return isValid(endTime) && endTime > now;
-    });
+  const schedules = (schedulesData?.schedules || []).filter((s: any) => {
+    const endTimeStr = s.class_end_time || s.end_time;
+    if (!endTimeStr) return false;
+    const endTime = new Date(endTimeStr);
+    return isValid(endTime) && endTime > now;
+  });
+
+  useEffect(() => {
+    if (schedulesData?.schedules) {
+      scheduleAttendanceNotifications(schedulesData.schedules);
+    }
+  }, [schedulesData, scheduleAttendanceNotifications]);
 
   const [selectedSchedule, setSelectedSchedule] = useState<any | null>(null);
 
@@ -80,13 +87,19 @@ export default function StudentMapScreen() {
 
   const handleMarkAttendance = async () => {
     if (!selectedSchedule || !user || !currentLat || !currentLng) {
-      Alert.alert("Error", "Missing required information (location/user/schedule).");
+      Alert.alert(
+        "Error",
+        "Missing required information (location/user/schedule).",
+      );
       return;
     }
 
-    const scheduleLat = selectedSchedule.location_lat || selectedSchedule.latitude;
-    const scheduleLng = selectedSchedule.location_long || selectedSchedule.longitude;
-    const radiusMeters = selectedSchedule.radius_meters || selectedSchedule.radius_m || 50;
+    const scheduleLat =
+      selectedSchedule.location_lat || selectedSchedule.latitude;
+    const scheduleLng =
+      selectedSchedule.location_long || selectedSchedule.longitude;
+    const radiusMeters =
+      selectedSchedule.radius_meters || selectedSchedule.radius_m || 50;
 
     if (!scheduleLat || !scheduleLng) {
       Alert.alert("Error", "Schedule has no valid coordinates.");
@@ -147,12 +160,14 @@ export default function StudentMapScreen() {
         longitude: currentLng,
       });
 
-
       Alert.alert("Success", "Attendance Marked Successfully!");
       setSelectedSchedule(null);
       refetchSchedules();
     } catch (error: any) {
-      const apiMessage = error?.response?.data?.message || error.message || "Failed to mark attendance";
+      const apiMessage =
+        error?.response?.data?.message ||
+        error.message ||
+        "Failed to mark attendance";
       console.log("Mark Attendance Error:", apiMessage);
       Alert.alert("Error", apiMessage);
     }
@@ -199,7 +214,7 @@ export default function StudentMapScreen() {
               style={{ color: theme.colors.primary, marginVertical: 4 }}
               onPress={() => setSelectedSchedule(schedule)}
             >
-              - Schedule at {schedule.center_lat}, {schedule.center_lon}
+              - Schedule at {schedule.location_lat}, {schedule.location_long}
             </Text>
           ))}
         </View>
@@ -237,7 +252,7 @@ export default function StudentMapScreen() {
                     latitude: schedule.location_lat,
                     longitude: schedule.location_long,
                   }}
-                  radius={schedule.radius_meters}
+                  radius={schedule.radius_m || 50}
                   fillColor="rgba(79, 70, 229, 0.2)"
                   strokeColor={theme.colors.primary}
                   strokeWidth={2}
@@ -255,9 +270,11 @@ export default function StudentMapScreen() {
             {selectedSchedule.course_code} - {selectedSchedule.course_name}
           </Text>
           <Text style={styles.sheetSubtitle}>
-            Radius: {selectedSchedule.radius_m ? `${selectedSchedule.radius_m}m` : 'N/A'}
+            Radius:{" "}
+            {selectedSchedule.radius_m
+              ? `${selectedSchedule.radius_m}m`
+              : "N/A"}
           </Text>
-
 
           <Button
             title="Mark Attendance"
@@ -336,8 +353,7 @@ const styles = StyleSheet.create({
   courseHeader: {
     ...theme.typography.body,
     color: theme.colors.primary,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: theme.spacing.xs,
   },
-
 });

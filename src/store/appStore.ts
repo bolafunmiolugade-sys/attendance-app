@@ -23,8 +23,9 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   courses: [
-    { id: 'c1', name: 'Intro to Computer Science', code: 'CS101', lecturer_id: 'u1' },
-    { id: 'c2', name: 'Data Structures', code: 'CS201', lecturer_id: 'u1' }
+    { id: 'c1', name: 'Intro to Computer Science', code: 'CS101', lecturer_id: 'u1', department: 'Computer Science' },
+    { id: 'c2', name: 'Data Structures', code: 'CS201', lecturer_id: 'u1', department: 'Computer Science' },
+    { id: 'c3', name: 'Microbiology 101', code: 'MCB101', lecturer_id: 'u2', department: 'Microbiology' }
   ],
   registrations: [],
   schedules: [],
@@ -51,7 +52,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const courseIds = state.registrations
       .filter(r => r.student_id === studentId)
       .map(r => r.course_id);
-    return state.courses.filter(c => courseIds.includes(c.id));
+    return state.courses.filter(c => courseIds.includes(c.id!));
   },
 
   getLecturerCourses: (lecturerId) => {

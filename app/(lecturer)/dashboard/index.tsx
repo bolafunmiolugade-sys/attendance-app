@@ -45,10 +45,10 @@ export default function LecturerDashboard() {
     return isValid(date) && isToday(date);
   });
 
-  const totalAttendanceCount = mySchedules.reduce(
-    (acc: number, s: any) => acc + (parseInt(s.present_count) || 0),
-    0,
-  );
+  // const totalAttendanceCount = mySchedules.reduce(
+  //   (acc: number, s: any) => acc + (parseInt(s.present_count) || 0),
+  //   0,
+  // );
 
   // Safe user name extraction
   const firstName = user?.full_name ? user.full_name.split(" ")[0] : "Lecturer";
@@ -105,10 +105,10 @@ export default function LecturerDashboard() {
             <Text style={styles.statValue}>{todaysSchedules.length}</Text>
             <Text style={styles.statLabel}>Classes Today</Text>
           </View>
-          <View style={[styles.statBox, { borderRightWidth: 0 }]}>
+          {/* <View style={[styles.statBox, { borderRightWidth: 0 }]}>
             <Text style={styles.statValue}>{totalAttendanceCount}</Text>
             <Text style={styles.statLabel}>Total Marks</Text>
-          </View>
+          </View> */}
         </View>
 
         <Text style={styles.sectionTitle}>Today&apos;s Classes</Text>
