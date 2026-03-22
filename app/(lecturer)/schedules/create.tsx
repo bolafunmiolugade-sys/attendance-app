@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -21,11 +22,9 @@ import { TextInput } from "@/src/components/TextInput";
 import { theme } from "@/src/constants/theme";
 import { useGetCourses } from "@/src/hooks/useCourseHooks";
 import { useCreateSchedule } from "@/src/hooks/useScheduleHooks";
-import { useAppStore } from "@/src/store/appStore";
 
 export default function CreateScheduleScreen() {
   const router = useRouter();
-  const { schedules } = useAppStore();
   const { data: coursesData, isLoading: isLoadingCourses } = useGetCourses();
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const { mutateAsync: createSchedule } = useCreateSchedule();
@@ -246,46 +245,84 @@ export default function CreateScheduleScreen() {
         <View style={styles.mapContainer}>
           <MapView
             style={styles.map}
-            region={mapRegion}
+            region={{
+              latitude: Number(mapRegion.latitude),
+              longitude: Number(mapRegion.longitude),
+              latitudeDelta: Number(mapRegion.latitudeDelta) || 0.01,
+              longitudeDelta: Number(mapRegion.longitudeDelta) || 0.01,
+            }}
             onPress={handleMapPress}
           >
             {/* Active Class Schedules */}
-            {(coursesData?.courses || []).map((s: any) => (
-              <React.Fragment key={s.course_id}>
-                <Marker
-                  coordinate={{
-                    latitude: s.center_lat,
-                    longitude: s.center_lon,
-                  }}
-                  pinColor="gray"
-                >
-                  <Ionicons
-                    name="book"
-                    size={32}
-                    color={theme.colors.primary}
-                  />
-                </Marker>
-                <Circle
-                  center={{ latitude: s.center_lat, longitude: s.center_lon }}
-                  radius={s.radius_m}
-                  fillColor="rgba(107, 114, 128, 0.1)"
-                  strokeColor="rgba(107, 114, 128, 0.3)"
-                />
-              </React.Fragment>
-            ))}
+            {isLoadingCourses ? (
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+            ) : (
+              (coursesData?.courses || []).map((s: any) => {
+                const lat = Number(s.center_lat);
+                const lon = Number(s.center_lon);
+                const circleRadius = Number(s.radius_m);
+
+                // Safety check: skip rendering if coordinates are invalid
+                if (
+                  isNaN(lat) ||
+                  isNaN(lon) ||
+                  s.center_lat === null ||
+                  s.center_lon === null
+                ) {
+                  return null;
+                }
+
+                return (
+                  <React.Fragment key={s.course_id}>
+                    <Marker
+                      coordinate={{
+                        latitude: lat,
+                        longitude: lon,
+                      }}
+                      pinColor="gray"
+                    >
+                      <Ionicons
+                        name="book"
+                        size={32}
+                        color={theme.colors.primary}
+                      />
+                    </Marker>
+                    <Circle
+                      center={{
+                        latitude: lat,
+                        longitude: lon,
+                      }}
+                      radius={isNaN(circleRadius) ? 50 : circleRadius}
+                      fillColor="rgba(107, 114, 128, 0.1)"
+                      strokeColor="rgba(107, 114, 128, 0.3)"
+                    />
+                  </React.Fragment>
+                );
+              })
+            )}
 
             {/* Current Pin */}
-            {pinLocation && (
-              <React.Fragment>
-                <Marker coordinate={pinLocation} />
-                <Circle
-                  center={pinLocation}
-                  radius={parseInt(radius) || 50}
-                  fillColor="rgba(79, 70, 229, 0.2)"
-                  strokeColor={theme.colors.primary}
-                />
-              </React.Fragment>
-            )}
+            {pinLocation &&
+              isFinite(Number(pinLocation.latitude)) &&
+              isFinite(Number(pinLocation.longitude)) && (
+                <React.Fragment>
+                  <Marker
+                    coordinate={{
+                      latitude: Number(pinLocation.latitude),
+                      longitude: Number(pinLocation.longitude),
+                    }}
+                  />
+                  <Circle
+                    center={{
+                      latitude: Number(pinLocation.latitude),
+                      longitude: Number(pinLocation.longitude),
+                    }}
+                    radius={Number(radius) || 50}
+                    fillColor="rgba(79, 70, 229, 0.2)"
+                    strokeColor={theme.colors.primary}
+                  />
+                </React.Fragment>
+              )}
           </MapView>
         </View>
       </ScrollView>

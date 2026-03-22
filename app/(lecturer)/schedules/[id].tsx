@@ -14,7 +14,7 @@ import { useAppStore } from "@/src/store/appStore";
 import { Feather } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,6 +25,29 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+function convertTo12Hour(time24: string) {
+  // Split the time string into hours, minutes, seconds
+  const [hoursStr, minutesStr, secondsStr] = time24.split(":");
+  let hours = parseInt(hoursStr);
+  const minutes = parseInt(minutesStr);
+  const [seconds, microseconds] = secondsStr.split(".");
+
+  // Convert to 12-hour format
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12; // 0 hour is 12 AM
+
+  // Keep milliseconds precision (first 3 digits)
+  const ms = microseconds ? microseconds.slice(0, 3) : "000";
+
+  return `${(hours + 1).toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+}
+
+// // Example usage:
+// console.log(convertTo12Hour("23:50:11.126445")); // "11:50:11.126 PM"
+// console.log(convertTo12Hour("00:05:01.001234")); // "12:05:01.001 AM"
+// console.log(convertTo12Hour("12:30:45.999999")); // "12:30:45.999 PM"
 
 export default function ScheduleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -65,6 +88,10 @@ export default function ScheduleDetailScreen() {
 
   // Use the comprehensive attendance list from backend as primary source
   const displayAttendees = attendanceData?.attendance || [];
+
+  useEffect(() => {
+    console.log("logsssss", displayAttendees, attendanceData);
+  }, [attendanceData]);
 
   // Initialize edit fields when entering edit mode or when schedule data loads
   useEffect(() => {
@@ -449,9 +476,7 @@ export default function ScheduleDetailScreen() {
                   <Text
                     style={[styles.rowCell, { width: 100, textAlign: "right" }]}
                   >
-                    {item.marked_at
-                      ? format(new Date(item.marked_at), "hh:mm a")
-                      : "---"}
+                    {item.marked_at ? convertTo12Hour(item.marked_at) : "---"}
                   </Text>
                 </View>
               ))

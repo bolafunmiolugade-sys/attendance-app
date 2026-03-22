@@ -229,37 +229,44 @@ export default function StudentMapScreen() {
           }}
           showsUserLocation={true}
         >
-          {schedules?.map((schedule: any) => {
-            console.log("schedule", schedule);
-            return (
-              <React.Fragment key={schedule.id}>
-                <Marker
-                  coordinate={{
-                    latitude: schedule.location_lat,
-                    longitude: schedule.location_long,
-                  }}
-                  onPress={() => setSelectedSchedule(schedule)}
-                >
-                  <Ionicons
-                    name="book"
-                    size={32}
-                    color={theme.colors.primary}
+          {isLoadingSchedules ? (
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          ) : (
+            schedules?.map((schedule: any) => {
+              console.log("schedule", schedule);
+              const lat = schedule.location_lat;
+              const lon = schedule.location_long;
+              if (!lat || !lon) return null;
+              return (
+                <React.Fragment key={schedule.id}>
+                  <Marker
+                    coordinate={{
+                      latitude: Number(lat),
+                      longitude: Number(lon),
+                    }}
+                    onPress={() => setSelectedSchedule(schedule)}
+                  >
+                    <Ionicons
+                      name="book"
+                      size={32}
+                      color={theme.colors.primary}
+                    />
+                    <Text>{schedule.course_code}</Text>
+                  </Marker>
+                  <Circle
+                    center={{
+                      latitude: Number(lat),
+                      longitude: Number(lon),
+                    }}
+                    radius={schedule.radius_m || 50}
+                    fillColor="rgba(79, 70, 229, 0.2)"
+                    strokeColor={theme.colors.primary}
+                    strokeWidth={2}
                   />
-                  <Text>{schedule.course_code}</Text>
-                </Marker>
-                <Circle
-                  center={{
-                    latitude: schedule.location_lat,
-                    longitude: schedule.location_long,
-                  }}
-                  radius={schedule.radius_m || 50}
-                  fillColor="rgba(79, 70, 229, 0.2)"
-                  strokeColor={theme.colors.primary}
-                  strokeWidth={2}
-                />
-              </React.Fragment>
-            );
-          })}
+                </React.Fragment>
+              );
+            })
+          )}
         </MapView>
       )}
 
